@@ -3,3 +3,5 @@ qiskit
 qiskit-aer
 numpy
 matplotlib
+plotly
+scipy
