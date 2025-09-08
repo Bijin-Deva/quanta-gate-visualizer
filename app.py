@@ -1,7 +1,8 @@
 import streamlit as st
 import numpy as np
 # Corrected import statements
-from qiskit import QuantumCircuit, execute
+from qiskit import QuantumCircuit
+from qiskit_aer import Aer
 from qiskit_aer import Aer
 from qiskit.visualization import plot_bloch_multivector
 import matplotlib.pyplot as plt
@@ -86,7 +87,7 @@ if st.button('Execute Circuit'):
 
             # Run the simulation
             backend = Aer.get_backend('statevector_simulator')
-            job = execute(qc, backend)
+            job = backend.run(qc)
             result = job.result()
             statevector = result.get_statevector()
             
@@ -106,4 +107,5 @@ st.sidebar.info("To add a gate, click the button in the palette.")
 def place_gate(qubit, time, gate_type):
     # This function is not used in this simplified app, but would be part of a custom UI
     pass
+
 
