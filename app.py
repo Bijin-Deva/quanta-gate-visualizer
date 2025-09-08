@@ -1,6 +1,8 @@
 import streamlit as st
 import numpy as np
-from qiskit import QuantumCircuit, Aer, execute
+# Corrected import statements
+from qiskit import QuantumCircuit, execute
+from qiskit_aer import Aer
 from qiskit.visualization import plot_bloch_multivector
 import matplotlib.pyplot as plt
 
@@ -104,3 +106,4 @@ st.sidebar.info("To add a gate, click the button in the palette.")
 def place_gate(qubit, time, gate_type):
     # This function is not used in this simplified app, but would be part of a custom UI
     pass
+
