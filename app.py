@@ -4,6 +4,7 @@ from qiskit import QuantumCircuit
 from qiskit_aer import Aer
 import plotly.graph_objects as go
 from qiskit.quantum_info import DensityMatrix, partial_trace
+import matplotlib.pyplot as plt
 
 # --- Page Configuration ---
 st.set_page_config(layout="wide", page_title="Quantum Circuit Simulator")
@@ -36,14 +37,12 @@ def set_active_gate(gate_symbol):
 def place_gate(q, t):
     """Callback to place the active gate on the grid."""
     active = st.session_state.active_gate
-    # Logic to handle placing Control and Target for CNOT
     if active == 'CNOT':
-        # If placing CNOT, first place Control, then user must select Target
         st.session_state.circuit_grid[q][t] = '●'
-        st.session_state.active_gate = '⊕' # Immediately switch to Target mode
+        st.session_state.active_gate = '⊕'
     elif active == '⊕':
          st.session_state.circuit_grid[q][t] = '⊕'
-         st.session_state.active_gate = 'H' # Reset to a default gate after placing
+         st.session_state.active_gate = 'H'
     else:
         st.session_state.circuit_grid[q][t] = active
 
@@ -51,7 +50,6 @@ def create_interactive_bloch_sphere(bloch_vector, title=""):
     """Creates an interactive Bloch sphere plot using Plotly."""
     x, y, z = bloch_vector
     fig = go.Figure()
-    # Draw the sphere surface
     u, v = np.mgrid[0:2*np.pi:100j, 0:np.pi:100j]
     sphere_x = np.cos(u) * np.sin(v)
     sphere_y = np.sin(u) * np.sin(v)
@@ -59,7 +57,6 @@ def create_interactive_bloch_sphere(bloch_vector, title=""):
     fig.add_trace(go.Surface(x=sphere_x, y=sphere_y, z=sphere_z,
                              colorscale=[[0, 'lightblue'], [1, 'lightblue']],
                              opacity=0.3, showscale=False))
-    # Draw axes and state vector
     fig.add_trace(go.Scatter3d(x=[-1.2, 1.2], y=[0, 0], z=[0, 0], mode='lines', line=dict(color='grey')))
     fig.add_trace(go.Scatter3d(x=[0, 0], y=[-1.2, 1.2], z=[0, 0], mode='lines', line=dict(color='grey')))
     fig.add_trace(go.Scatter3d(x=[0, 0], y=[0, 0], z=[-1.2, 1.2], mode='lines', line=dict(color='grey')))
@@ -84,8 +81,8 @@ with st.sidebar:
     st.header('Circuit Controls')
     num_qubits = st.slider('Number of Qubits', 1, 5, 2, key='num_qubits_slider')
     num_steps = st.slider('Circuit Depth', 5, 15, 10, key='num_steps_slider')
-
-    # Initialize state if it doesn't exist or if dimensions changed
+    num_shots = st.slider('Number of Shots (for measurement)', 100, 4000, 1024, key='shots_slider')
+    
     if 'circuit_grid' not in st.session_state or len(st.session_state.circuit_grid) != num_qubits or len(st.session_state.circuit_grid[0]) != num_steps:
         initialize_state(num_qubits, num_steps)
 
@@ -96,7 +93,6 @@ with st.sidebar:
     st.header("Gate Palette")
     st.write("Current Gate: **" + st.session_state.active_gate + "**")
     
-    # Gate selection buttons
     gate_palette_cols = st.columns(2)
     palette_gates = ['H', 'X', 'Y', 'Z', 'S', 'T', 'I', 'CNOT']
     for i, gate in enumerate(palette_gates):
@@ -106,11 +102,10 @@ with st.sidebar:
     if st.session_state.active_gate == '⊕':
         st.info("Now, click a grid cell to place the CNOT Target (⊕).")
 
-
 # --- Main Circuit Grid UI ---
 st.header('Quantum Circuit')
 grid_cols = st.columns(num_steps + 1)
-grid_cols[0].markdown("---") # Spacer
+grid_cols[0].markdown("---") 
 
 for i in range(num_steps):
     grid_cols[i + 1].markdown(f"<p style='text-align: center;'>{i}</p>", unsafe_allow_html=True)
@@ -123,13 +118,12 @@ for q in range(num_qubits):
             gate_in_cell, key=f"cell_{q}_{t}", on_click=place_gate, args=(q, t), use_container_width=True
         )
 
-
 # --- Execution Logic ---
 if st.button('▶️ Execute', type="primary", use_container_width=True):
     try:
         with st.spinner("Simulating circuit..."):
+            # --- Build the Circuit from the Grid ---
             qc = QuantumCircuit(num_qubits)
-            # Build the circuit from the grid state
             for t in range(num_steps):
                 control_qubit = -1
                 target_qubit = -1
@@ -149,17 +143,57 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                         gate = st.session_state.circuit_grid[q][t]
                         if gate != 'I':
                             getattr(qc, gate.lower())(q)
-            qc.barrier()
             
-            # --- Simulation ---
-            backend = Aer.get_backend('statevector_simulator')
-            job = backend.run(qc)
-            result = job.result()
-            statevector = result.get_statevector()
             st.success("✅ Simulation complete!")
 
-            # --- Display Results ---
-            st.header("Quantum States")
+            # --- Circuit Visualization ---
+            st.header("Circuit Diagram")
+            qc_drawing = qc.copy()
+            qc_drawing.barrier()
+            fig, ax = plt.subplots()
+            qc_drawing.draw('mpl', ax=ax, style='iqx')
+            st.pyplot(fig)
+            plt.close(fig)
+            
+            # --- Measurement Simulation & Histogram ---
+            st.header("Measurement Outcomes")
+            qc_measured = qc.copy()
+            qc_measured.measure_all()
+            
+            qasm_backend = Aer.get_backend('qasm_simulator')
+            qasm_job = qasm_backend.run(qc_measured, shots=num_shots)
+            counts = qasm_job.result().get_counts()
+            
+            sorted_counts = dict(sorted(counts.items()))
+
+            hist_fig = go.Figure(go.Bar(
+                x=list(sorted_counts.keys()), 
+                y=list(sorted_counts.values()),
+                marker_color='indianred'
+            ))
+            hist_fig.update_layout(
+                title=f"Results from {num_shots} shots",
+                xaxis_title="Outcome (Classical Bit String)",
+                yaxis_title="Counts",
+            )
+            st.plotly_chart(hist_fig, use_container_width=True)
+
+            # --- NEW: Display Most Probable Outcome ---
+            if counts:
+                # Find the outcome with the highest count
+                most_likely_outcome = max(counts, key=counts.get)
+                st.metric(label="Most Probable Classical Outcome", value=most_likely_outcome)
+            else:
+                st.warning("No measurement outcomes were recorded.")
+
+            # --- Ideal Statevector Simulation & Results ---
+            st.header("Ideal State Simulation")
+            st.markdown("This shows the theoretical quantum state *before* measurement.")
+            
+            statevector_backend = Aer.get_backend('statevector_simulator')
+            job = statevector_backend.run(qc)
+            statevector = job.result().get_statevector()
+
             dm = DensityMatrix(statevector)
             bloch_vectors = []
             for i in range(num_qubits):
@@ -174,6 +208,14 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                 with cols[i]:
                     fig = create_interactive_bloch_sphere(vec, title=f"Qubit {i}")
                     st.plotly_chart(fig, use_container_width=True)
+
+            # --- Technical Details Expander ---
+            with st.expander("Show Technical Details (Ideal State)"):
+                st.subheader("Statevector")
+                st.code(f"{statevector}", language=None)
+                
+                st.subheader("Density Matrix")
+                st.code(str(dm), language=None)
 
     except ValueError as e:
         st.error(f"Circuit Error: {e}")
