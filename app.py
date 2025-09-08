@@ -1,111 +1,145 @@
 import streamlit as st
 import numpy as np
-# Corrected import statements
 from qiskit import QuantumCircuit
-from qiskit_aer import Aer
 from qiskit_aer import Aer
 from qiskit.visualization import plot_bloch_multivector
 import matplotlib.pyplot as plt
 
-# --- Quantum Gate Definitions (Matrices) ---
-# We use NumPy arrays for matrix representation
-GATE_MATRICES = {
-    'X': {'name': 'Pauli-X', 'symbol': 'X', 'matrix': np.array([[0, 1], [1, 0]])},
-    'Y': {'name': 'Pauli-Y', 'symbol': 'Y', 'matrix': np.array([[0, -1j], [1j, 0]])},
-    'Z': {'name': 'Pauli-Z', 'symbol': 'Z', 'matrix': np.array([[1, 0], [0, -1]])},
-    'H': {'name': 'Hadamard', 'symbol': 'H', 'matrix': np.array([[1, 1], [1, -1]]) / np.sqrt(2)},
-    'S': {'name': 'S Gate', 'symbol': 'S', 'matrix': np.array([[1, 0], [0, 1j]])},
-    'T': {'name': 'T Gate', 'symbol': 'T', 'matrix': np.array([[1, 0], [0, np.exp(1j * np.pi / 4)]])},
-    'I': {'name': 'Identity', 'symbol': 'I', 'matrix': np.array([[1, 0], [0, 1]])},
-    'CNOT': {'name': 'CNOT', 'symbol': 'CNOT', 'matrix': None, 'is_multi_qubit': True}
+# --- Page Configuration ---
+st.set_page_config(layout="wide", page_title="Quantum Circuit Simulator")
+
+# --- Gate Definitions ---
+# We add display symbols for the grid UI
+# CNOT is now represented by Control '●' and Target '⊕'
+GATE_DEFINITIONS = {
+    'I': {'name': 'Identity', 'matrix': np.array([[1, 0], [0, 1]]), 'params': 0},
+    'X': {'name': 'Pauli-X', 'matrix': np.array([[0, 1], [1, 0]]), 'params': 0},
+    'Y': {'name': 'Pauli-Y', 'matrix': np.array([[0, -1j], [1j, 0]]), 'params': 0},
+    'Z': {'name': 'Pauli-Z', 'matrix': np.array([[1, 0], [0, -1]]), 'params': 0},
+    'H': {'name': 'Hadamard', 'matrix': np.array([[1, 1], [1, -1]]) / np.sqrt(2), 'params': 0},
+    'S': {'name': 'S Gate', 'matrix': np.array([[1, 0], [0, 1j]]), 'params': 0},
+    'T': {'name': 'T Gate', 'matrix': np.array([[1, 0], [0, np.exp(1j * np.pi / 4)]]), 'params': 0},
+    '●': {'name': 'Control', 'matrix': None, 'params': 0},
+    '⊕': {'name': 'Target (X)', 'matrix': None, 'params': 0},
 }
+GATE_OPTIONS = list(GATE_DEFINITIONS.keys())
 
-# --- Streamlit App UI ---
-st.set_page_config(layout="wide")
-st.title('⚛️ Quantum Circuit Simulator with Streamlit')
-st.markdown("""
-A simple, interactive quantum circuit simulator built with Streamlit and Qiskit.
-Build a circuit by dragging and dropping gates, then click 'Execute' to see the results on the Bloch sphere.
-""")
+# --- Helper Functions ---
+def initialize_state(num_qubits, num_steps):
+    """Initializes or resets the circuit grid in the session state."""
+    st.session_state.circuit_grid = [['I'] * num_steps for _ in range(num_qubits)]
 
-# Initialize session state for the circuit and simulation results
-if 'num_qubits' not in st.session_state:
-    st.session_state.num_qubits = 2
-if 'circuit_data' not in st.session_state:
-    st.session_state.circuit_data = []
+# --- Streamlit UI ---
+st.title('⚛️ Quantum Circuit Simulator')
+st.markdown("Visually build a quantum circuit and see the resulting quantum states on Bloch spheres.")
 
-# --- Sidebar for Controls ---
-st.sidebar.header('Circuit Controls')
-st.session_state.num_qubits = st.sidebar.slider(
-    'Number of Qubits', 1, 8, st.session_state.num_qubits
-)
+# --- Sidebar Controls ---
+with st.sidebar:
+    st.header('Circuit Controls')
+    
+    # Allow user to change number of qubits
+    num_qubits = st.slider(
+        'Number of Qubits', 1, 5, 2, key='num_qubits_slider'
+    )
+    
+    # Allow user to change number of time steps (circuit depth)
+    num_steps = st.slider(
+        'Circuit Depth (Steps)', 5, 15, 10, key='num_steps_slider'
+    )
 
-if st.sidebar.button('Reset Circuit'):
-    st.session_state.circuit_data = []
-    st.experimental_rerun()
+    if 'circuit_grid' not in st.session_state or len(st.session_state.circuit_grid) != num_qubits or len(st.session_state.circuit_grid[0]) != num_steps:
+        initialize_state(num_qubits, num_steps)
 
-# --- Gate Palette ---
-st.sidebar.header('Quantum Gates')
-gate_palette = st.sidebar.columns(2)
-for i, (gate_name, gate_info) in enumerate(GATE_MATRICES.items()):
-    col = gate_palette[i % 2]
-    with col:
-        if st.button(f"{gate_info['symbol']} - {gate_info['name']}"):
-            st.session_state.selected_gate = gate_name
+    if st.button('Reset Circuit', use_container_width=True):
+        initialize_state(num_qubits, num_steps)
+        st.success("Circuit reset!")
 
-# --- Circuit Grid Visualization (simplified) ---
-st.header('Circuit Grid')
-circuit_columns = st.columns(10) # Create 10 columns for time steps
+# --- Main Circuit Grid UI ---
+st.header('Quantum Circuit')
+grid_cols = st.columns(num_steps + 1) # +1 for qubit labels
 
-# This part is a simplified UI. A more complex drag-and-drop would be custom JS
-# For now, we'll use buttons to represent the grid
-for t in range(10):
-    circuit_columns[t].markdown(f"**{t}**")
+# Header row for time steps
+for i in range(num_steps):
+    grid_cols[i + 1].markdown(f"<p style='text-align: center;'>{i}</p>", unsafe_allow_html=True)
 
-# This is a placeholder for the circuit visualization
-# A full visual representation would require more complex rendering
-st.write("Current Circuit:")
-st.json(st.session_state.circuit_data)
+# Create a row for each qubit
+for q in range(num_qubits):
+    # Label for the qubit row
+    grid_cols[0].markdown(f"`|q{q}⟩`")
+    
+    # Create a selectbox for each time step in the qubit's row
+    for t in range(num_steps):
+        # Use a unique key for each selectbox
+        gate = grid_cols[t + 1].selectbox(
+            f"Q{q}T{t}", 
+            options=GATE_OPTIONS, 
+            key=f"gate_{q}_{t}",
+            label_visibility="collapsed"
+        )
+        # Update the session state grid when a selection is made
+        st.session_state.circuit_grid[q][t] = gate
 
 # --- Execution Logic ---
-if st.button('Execute Circuit'):
-    if not st.session_state.circuit_data:
-        st.warning("Please add some gates to the circuit first!")
-    else:
-        with st.spinner("Executing simulation..."):
-            qc = QuantumCircuit(st.session_state.num_qubits)
-
-            # Apply gates from session state
-            for gate in st.session_state.circuit_data:
-                gate_type = gate['type']
-                qubit = gate['qubit']
-                if gate_type == 'CNOT':
-                    target = gate['target']
-                    qc.cx(qubit, target)
+if st.button('▶️ Execute', type="primary", use_container_width=True):
+    try:
+        with st.spinner("Simulating circuit..."):
+            qc = QuantumCircuit(num_qubits)
+            
+            # Build the circuit by reading the grid column by column (time step by time step)
+            for t in range(num_steps):
+                control_qubit = -1
+                target_qubit = -1
+                
+                # First pass for CNOT detection in this time step
+                for q in range(num_qubits):
+                    gate = st.session_state.circuit_grid[q][t]
+                    if gate == '●':
+                        if control_qubit != -1: # More than one control
+                            raise ValueError(f"Multiple control gates found in time step {t}.")
+                        control_qubit = q
+                    elif gate == '⊕':
+                        if target_qubit != -1: # More than one target
+                            raise ValueError(f"Multiple target gates found in time step {t}.")
+                        target_qubit = q
+                
+                # Apply gates for this time step
+                if control_qubit != -1 or target_qubit != -1:
+                     # This is a CNOT gate step
+                    if control_qubit == -1 or target_qubit == -1:
+                        raise ValueError(f"Incomplete CNOT gate in time step {t}. Both '●' and '⊕' are required.")
+                    qc.cx(control_qubit, target_qubit)
                 else:
-                    getattr(qc, gate_type.lower())(qubit)
-
-            # Run the simulation
+                    # Apply single-qubit gates for this step
+                    for q in range(num_qubits):
+                        gate = st.session_state.circuit_grid[q][t]
+                        if gate != 'I' and gate != '●' and gate != '⊕':
+                             # getattr allows calling a method by its string name, e.g., qc.h(q)
+                            getattr(qc, gate.lower())(q)
+            
+            # Add a barrier to visually separate operations
+            qc.barrier()
+            
+            # --- Simulation ---
             backend = Aer.get_backend('statevector_simulator')
             job = backend.run(qc)
             result = job.result()
             statevector = result.get_statevector()
-            
-            st.success("Simulation complete!")
 
-            # Display the results
-            st.header('Simulation Results')
+            st.success("✅ Simulation complete!")
+
+            # --- Display Results ---
+            st.header("Quantum States")
+            st.markdown("The final state of each qubit is visualized on a Bloch sphere.")
+            
             fig = plot_bloch_multivector(statevector)
             st.pyplot(fig)
-            st.json(statevector.data)
+            plt.close(fig) # Important to close the figure to free up memory
 
-# --- This is a placeholder for drag-and-drop functionality ---
-# You can use Streamlit's components for a more advanced UI, but this shows the basic idea
-st.sidebar.info("To add a gate, click the button in the palette.")
+            # Optional: Display the raw statevector
+            with st.expander("Show Raw Statevector"):
+                st.code(f"{statevector}", language=None)
 
-# --- Helper functions for the UI logic ---
-def place_gate(qubit, time, gate_type):
-    # This function is not used in this simplified app, but would be part of a custom UI
-    pass
-
-
+    except ValueError as e:
+        st.error(f"Circuit Error: {e}")
+    except Exception as e:
+        st.error(f"An unexpected error occurred: {e}")
