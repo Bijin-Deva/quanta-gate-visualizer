@@ -122,6 +122,7 @@ for q in range(num_qubits):
 # --- Execution Logic ---
 # --- Execution Logic ---
 # --- Execution Logic ---
+# --- Execution Logic ---
 if st.button('▶️ Execute', type="primary", use_container_width=True):
     try:
         with st.spinner("Simulating circuit..."):
@@ -223,7 +224,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                     st.subheader(f"Qubit {i}")
 
                     # Display Bloch Sphere first
-                    fig = create_interactive__bloch_sphere(bloch_vector)
+                    fig = create_interactive_bloch_sphere(bloch_vector) # <-- TYPO FIXED HERE
                     st.plotly_chart(fig, use_container_width=True, key=f"bloch_sphere_{i}")
 
                     # Display analysis below the sphere
@@ -244,5 +245,3 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
-
-
