@@ -119,6 +119,7 @@ for q in range(num_qubits):
         )
 
 # --- Execution Logic ---
+# --- Execution Logic ---
 if st.button('▶️ Execute', type="primary", use_container_width=True):
     try:
         with st.spinner("Simulating circuit..."):
@@ -127,6 +128,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
             for t in range(num_steps):
                 control_qubit = -1
                 target_qubit = -1
+                # First pass to find CNOTs in the current time step
                 for q in range(num_qubits):
                     gate = st.session_state.circuit_grid[q][t]
                     if gate == '●':
@@ -134,24 +136,25 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                     elif gate == '⊕':
                         target_qubit = q
                 
+                # Apply gates for the current time step
                 if control_qubit != -1 and target_qubit != -1:
                     qc.cx(control_qubit, target_qubit)
                 elif control_qubit != -1 or target_qubit != -1:
+                    # If only one part of CNOT is present, raise an error
                     raise ValueError(f"Incomplete CNOT gate in time step {t}.")
                 else:
+                    # Apply single-qubit gates if no CNOT in this step
                     for q in range(num_qubits):
                         gate = st.session_state.circuit_grid[q][t]
-                        if gate != 'I':
+                        if gate != 'I' and gate != '●' and gate != '⊕':
                             getattr(qc, gate.lower())(q)
             
             st.success("✅ Simulation complete!")
 
             # --- Circuit Visualization ---
             st.header("Circuit Diagram")
-            qc_drawing = qc.copy()
-            qc_drawing.barrier()
             fig, ax = plt.subplots()
-            qc_drawing.draw('mpl', ax=ax, style='iqx')
+            qc.draw('mpl', ax=ax, style='iqx')
             st.pyplot(fig)
             plt.close(fig)
             
@@ -164,58 +167,76 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
             qasm_job = qasm_backend.run(qc_measured, shots=num_shots)
             counts = qasm_job.result().get_counts()
             
-            sorted_counts = dict(sorted(counts.items()))
-
-            hist_fig = go.Figure(go.Bar(
-                x=list(sorted_counts.keys()), 
-                y=list(sorted_counts.values()),
-                marker_color='indianred'
-            ))
-            hist_fig.update_layout(
-                title=f"Results from {num_shots} shots",
-                xaxis_title="Outcome (Classical Bit String)",
-                yaxis_title="Counts",
-            )
-            st.plotly_chart(hist_fig, use_container_width=True)
-
-            # --- NEW: Display Most Probable Outcome ---
             if counts:
                 # Find the outcome with the highest count
                 most_likely_outcome = max(counts, key=counts.get)
                 st.metric(label="Most Probable Classical Outcome", value=most_likely_outcome)
+
+                sorted_counts = dict(sorted(counts.items()))
+                hist_fig = go.Figure(go.Bar(
+                    x=list(sorted_counts.keys()), 
+                    y=list(sorted_counts.values()),
+                    marker_color='indianred'
+                ))
+                hist_fig.update_layout(
+                    title=f"Results from {num_shots} shots",
+                    xaxis_title="Outcome (Classical Bit String)",
+                    yaxis_title="Counts",
+                )
+                st.plotly_chart(hist_fig, use_container_width=True)
             else:
                 st.warning("No measurement outcomes were recorded.")
 
-            # --- Ideal Statevector Simulation & Results ---
-            st.header("Ideal State Simulation")
-            st.markdown("This shows the theoretical quantum state *before* measurement.")
+            # --- Ideal State Simulation & Per-Qubit Results ---
+            st.header("Ideal State Analysis (per Qubit)")
+            st.markdown("This shows the theoretical quantum state of each qubit *before* measurement.")
             
             statevector_backend = Aer.get_backend('statevector_simulator')
             job = statevector_backend.run(qc)
-            statevector = job.result().get_statevector()
+            final_state = job.result().get_statevector()
+            final_dm = DensityMatrix(final_state)
 
-            dm = DensityMatrix(statevector)
-            bloch_vectors = []
+            # --- Display Per-Qubit Information ---
+            cols = st.columns(num_qubits)
             for i in range(num_qubits):
-                reduced_dm = partial_trace(dm, [q for q in range(num_qubits) if q != i])
+                # Isolate the density matrix for the current qubit
+                q_list = list(range(num_qubits))
+                q_list.remove(i)
+                reduced_dm = partial_trace(final_dm, q_list)
+                
+                # Calculate Bloch vector components
                 x = np.real(np.trace(reduced_dm.data @ np.array([[0, 1], [1, 0]])))
                 y = np.real(np.trace(reduced_dm.data @ np.array([[0, -1j], [1j, 0]])))
                 z = np.real(np.trace(reduced_dm.data @ np.array([[1, 0], [0, -1]])))
-                bloch_vectors.append([x, y, z])
-            
-            cols = st.columns(num_qubits)
-            for i, vec in enumerate(bloch_vectors):
-                with cols[i]:
-                    fig = create_interactive_bloch_sphere(vec, title=f"Qubit {i}")
-                    st.plotly_chart(fig, use_container_width=True)
+                bloch_vector = [x, y, z]
 
-            # --- Technical Details Expander ---
-            with st.expander("Show Technical Details (Ideal State)"):
-                st.subheader("Statevector")
-                st.code(f"{statevector}", language=None)
-                
-                st.subheader("Density Matrix")
-                st.code(str(dm), language=None)
+                # Calculate probabilities from the diagonal of the reduced density matrix
+                prob_0 = np.real(reduced_dm.data[0, 0])
+                prob_1 = np.real(reduced_dm.data[1, 1])
+
+                # Calculate purity
+                purity = np.real(np.trace(reduced_dm.data @ reduced_dm.data))
+
+                with cols[i]:
+                    st.subheader(f"Qubit {i}")
+                    # Probabilities
+                    st.text(f"|0⟩: {prob_0:.3f}")
+                    st.progress(prob_0)
+                    st.text(f"|1⟩: {prob_1:.3f}")
+                    st.progress(prob_1)
+                    
+                    # Purity Metric
+                    st.metric(label="Purity", value=f"{purity:.3f}")
+
+                    # Details Expander
+                    with st.expander("Details"):
+                        st.text(f"Bloch Vector: ({x:.3f}, {y:.3f}, {z:.3f})")
+                        st.text("Reduced Density Matrix:")
+                        st.code(str(reduced_dm), language=None)
+
+                    # Bloch Sphere
+                    fig = create_interactive_bloch_sphere(bloch_vector)
+                    st.plotly_chart(fig, use_container_width=True)
 
     except ValueError as e:
         st.error(f"Circuit Error: {e}")
