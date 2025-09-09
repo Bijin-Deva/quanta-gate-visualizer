@@ -121,6 +121,7 @@ for q in range(num_qubits):
 # --- Execution Logic ---
 # --- Execution Logic ---
 # --- Execution Logic ---
+# --- Execution Logic ---
 if st.button('▶️ Execute', type="primary", use_container_width=True):
     try:
         with st.spinner("Simulating circuit..."):
@@ -222,8 +223,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                     st.subheader(f"Qubit {i}")
 
                     # Display Bloch Sphere first
-                    fig = create_interactive_bloch_sphere(bloch_vector)
-                    # Add a unique key to fix the error
+                    fig = create_interactive__bloch_sphere(bloch_vector)
                     st.plotly_chart(fig, use_container_width=True, key=f"bloch_sphere_{i}")
 
                     # Display analysis below the sphere
@@ -237,10 +237,12 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                     with st.expander("Details"):
                         st.text(f"Bloch Vector: ({x:.3f}, {y:.3f}, {z:.3f})")
                         st.text("Reduced Density Matrix:")
-                        st.code(str(reduced_dm), language=None)
+                        # Use st.dataframe to display the matrix cleanly
+                        st.dataframe(reduced_dm.data)
 
     except ValueError as e:
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
