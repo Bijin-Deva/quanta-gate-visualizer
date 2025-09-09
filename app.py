@@ -41,8 +41,8 @@ def place_gate(q, t):
         st.session_state.circuit_grid[q][t] = '●'
         st.session_state.active_gate = '⊕'
     elif active == '⊕':
-         st.session_state.circuit_grid[q][t] = '⊕'
-         st.session_state.active_gate = 'H'
+        st.session_state.circuit_grid[q][t] = '⊕'
+        st.session_state.active_gate = 'H'
     else:
         st.session_state.circuit_grid[q][t] = active
 
@@ -119,10 +119,6 @@ for q in range(num_qubits):
         )
 
 # --- Execution Logic ---
-# --- Execution Logic ---
-# --- Execution Logic ---
-# --- Execution Logic ---
-# --- Execution Logic ---
 if st.button('▶️ Execute', type="primary", use_container_width=True):
     try:
         with st.spinner("Simulating circuit..."):
@@ -175,6 +171,11 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                 most_likely_outcome = max(counts, key=counts.get)
                 st.metric(label="Most Probable Classical Outcome", value=most_likely_outcome)
 
+                # --- NEW CODE ADDED HERE ---
+                qubit_order_str = "".join([f"q{i}" for i in range(num_qubits - 1, -1, -1)])
+                st.info(f"💡 **How to Read the Output:** The bit string is ordered from highest to lowest qubit index ({qubit_order_str}). Qubit q0 is the rightmost digit.")
+                # --- END OF NEW CODE ---
+
                 sorted_counts = dict(sorted(counts.items()))
                 hist_fig = go.Figure(go.Bar(
                     x=list(sorted_counts.keys()), 
@@ -224,7 +225,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                     st.subheader(f"Qubit {i}")
 
                     # Display Bloch Sphere first
-                    fig = create_interactive_bloch_sphere(bloch_vector) # <-- TYPO FIXED HERE
+                    fig = create_interactive_bloch_sphere(bloch_vector)
                     st.plotly_chart(fig, use_container_width=True, key=f"bloch_sphere_{i}")
 
                     # Display analysis below the sphere
