@@ -16,6 +16,9 @@ from qiskit_aer.noise import (
 
 # --- Page Configuration ---
 st.set_page_config(layout="wide", page_title="Quantum Circuit Simulator")
+# --- Session State Initialization ---
+if "undo_stack" not in st.session_state:
+    st.session_state.undo_stack = []
 
 # --- Gate Definitions ---
 GATE_DEFINITIONS = {
@@ -254,7 +257,12 @@ with st.sidebar:
     st.subheader("History Controls")
     c1, c2 = st.columns(2)
     with c1:
-        st.button("↩️ Undo", on_click=undo, disabled=not st.session_state.undo_stack, use_container_width=True)
+        st.button(
+            "↩️ Undo",
+            on_click=undo,
+            disabled=len(st.session_state.undo_stack) == 0,
+            use_container_width=True
+            )
     with c2:
         st.button("↪️ Redo", on_click=redo, disabled=not st.session_state.redo_stack, use_container_width=True)
     
@@ -438,6 +446,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
