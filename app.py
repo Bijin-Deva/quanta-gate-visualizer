@@ -32,15 +32,42 @@ GATE_DEFINITIONS = {
 
 # --- Helper Functions & State Management ---
 
-def initialize_state(num_qubits, num_steps):
-    """Initializes or resets the circuit grid and active gate."""
-    st.session_state.circuit_grid = [['I'] * num_steps for _ in range(num_qubits)]
-    if 'active_gate' not in st.session_state:
-        st.session_state.active_gate = 'H'
+
 
 def set_active_gate(gate_symbol):
     """Callback to set the currently selected gate."""
     st.session_state.active_gate = gate_symbol
+def initialize_state(num_qubits, num_steps):
+    """Initializes or resets the circuit grid and history stacks."""
+    st.session_state.circuit_grid = [['I'] * num_steps for _ in range(num_qubits)]
+    st.session_state.undo_stack = []
+    st.session_state.redo_stack = []
+    if 'active_gate' not in st.session_state:
+        st.session_state.active_gate = 'H'
+def save_to_history():
+    """Saves a copy of the current grid to the undo stack."""
+    # We use [row[:] for row in grid] to create a deep copy of the 2D list
+    snapshot = [row[:] for row in st.session_state.circuit_grid]
+    st.session_state.undo_stack.append(snapshot)
+    # Clear redo stack whenever a new action is taken
+    st.session_state.redo_stack = []
+
+def undo():
+    if st.session_state.undo_stack:
+        # Save current to redo
+        current_state = [row[:] for row in st.session_state.circuit_grid]
+        st.session_state.redo_stack.append(current_state)
+        # Restore last from undo
+        st.session_state.circuit_grid = st.session_state.undo_stack.pop()
+
+def redo():
+    if st.session_state.redo_stack:
+        # Save current to undo
+        current_state = [row[:] for row in st.session_state.circuit_grid]
+        st.session_state.undo_stack.append(current_state)
+        # Restore last from redo
+        st.session_state.circuit_grid = st.session_state.redo_stack.pop()
+
 
 def place_gate(q, t):
     """Callback to place the active gate on the grid."""
@@ -189,6 +216,26 @@ def build_noise_model():
 
     return noise
 
+def place_gate(q, t):
+    # SAVE STATE BEFORE CHANGE
+    save_to_history()
+
+    active = st.session_state.active_gate
+
+    if active == 'CNOT':
+        st.session_state.circuit_grid[q][t] = '●'
+        st.session_state.active_gate = '⊕'
+    elif active == '⊕':
+        st.session_state.circuit_grid[q][t] = '⊕'
+        st.session_state.active_gate = 'H'
+    else:
+        st.session_state.circuit_grid[q][t] = active
+def initialize_state(num_qubits, num_steps):
+    st.session_state.circuit_grid = [['I'] * num_steps for _ in range(num_qubits)]
+    st.session_state.undo_stack = []
+    st.session_state.redo_stack = []
+    if 'active_gate' not in st.session_state:
+        st.session_state.active_gate = 'H'
 
 # --- Streamlit UI ---
 st.title('⚛️ Quantum Circuit Simulator')
@@ -196,39 +243,36 @@ st.markdown("Select a gate from the sidebar, then click on the grid to place it.
 
 # --- Sidebar ---
 with st.sidebar:
-    st.header('Circuit Controls')
-    num_qubits = st.slider('Number of Qubits', 1, 5, 2, key='num_qubits_slider')
-    num_steps = st.slider('Circuit Depth', 5, 15, 10, key='num_steps_slider')
-    num_shots = st.slider('Number of Shots (for measurement)', 100, 4000, 1024, key='shots_slider')
-    st.header("Quantum Noise")
-    enable_noise = st.checkbox("Enable Noise", value=False)
+    st.header('⚙️ Circuit Settings')
+    num_qubits = st.slider('Number of Qubits', 1, 5, 2)
+    num_steps = st.slider('Circuit Depth', 5, 15, 10)
+    num_shots = st.slider('Shots', 100, 4000, 1024)
 
-    with st.expander("Noise Parameters"):
-        depol_p = st.slider("Depolarization", 0.0, 0.3, 0.0)
-        decay_f = st.slider("Amplitude Damping (T1)", 0.0, 0.3, 0.0)
-        phase_g = st.slider("Phase Damping (T2)", 0.0, 0.3, 0.0)
-        tsp_01 = st.slider("|0⟩ → |1⟩ (Readout)", 0.0, 0.3, 0.0)
-        tsp_10 = st.slider("|1⟩ → |0⟩ (Readout)", 0.0, 0.3, 0.0)
-
-    
-    if 'circuit_grid' not in st.session_state or len(st.session_state.circuit_grid) != num_qubits or len(st.session_state.circuit_grid[0]) != num_steps:
+    if 'circuit_grid' not in st.session_state or len(st.session_state.circuit_grid) != num_qubits:
         initialize_state(num_qubits, num_steps)
 
-    if st.button('Reset Circuit', use_container_width=True):
-        initialize_state(num_qubits, num_steps)
-        st.success("Circuit reset!")
-
-    st.header("Gate Palette")
-    st.write("Current Gate: **" + st.session_state.active_gate + "**")
+    st.subheader("History Controls")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.button("↩️ Undo", on_click=undo, disabled=not st.session_state.undo_stack, use_container_width=True)
+    with c2:
+        st.button("↪️ Redo", on_click=redo, disabled=not st.session_state.redo_stack, use_container_width=True)
     
-    gate_palette_cols = st.columns(2)
-    palette_gates = ['H', 'X', 'Y', 'Z', 'S', 'T', 'I', 'CNOT']
-    for i, gate in enumerate(palette_gates):
-        gate_palette_cols[i % 2].button(
-            gate, on_click=set_active_gate, args=(gate,), use_container_width=True
-        )
-    if st.session_state.active_gate == '⊕':
-        st.info("Now, click a grid cell to place the CNOT Target (⊕).")
+    if st.button('🗑️ Reset Circuit', key="main_reset", use_container_width=True):
+        initialize_state(num_qubits, num_steps)
+        st.rerun()
+
+    st.header("🔬 Noise Model")
+    enable_noise = st.checkbox("Enable Simulation Noise")
+    depol_p = st.slider("Depolarization", 0.0, 0.3, 0.0)
+    decay_f = st.slider("T1 Amplitude Damping", 0.0, 0.3, 0.0)
+    
+    st.header("🎨 Gate Palette")
+    st.write(f"Active Tool: **{st.session_state.active_gate}**")
+    palette = ['H', 'X', 'Y', 'Z', 'S', 'T', 'I', 'CNOT']
+    cols = st.columns(2)
+    for i, g in enumerate(palette):
+        cols[i%2].button(g, key=f"pal_{g}", on_click=set_active_gate, args=(g,), use_container_width=True)
 
 # --- Main Circuit Grid UI ---
 st.header('Quantum Circuit')
@@ -394,7 +438,6 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
-
 
 
 
