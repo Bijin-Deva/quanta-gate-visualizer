@@ -5,6 +5,14 @@ from qiskit_aer import Aer
 import plotly.graph_objects as go
 from qiskit.quantum_info import DensityMatrix, partial_trace
 import matplotlib.pyplot as plt
+from qiskit_aer.noise import (
+    NoiseModel,
+    depolarizing_error,
+    amplitude_damping_error,
+    phase_damping_error,
+    ReadoutError
+)
+
 
 # --- Page Configuration ---
 st.set_page_config(layout="wide", page_title="Quantum Circuit Simulator")
@@ -72,6 +80,38 @@ def create_interactive_bloch_sphere(bloch_vector, title=""):
         margin=dict(l=0, r=0, b=0, t=40))
     return fig
 
+def build_noise_model():
+    noise = NoiseModel()
+
+    if depol_p > 0:
+        noise.add_all_qubit_quantum_error(
+            depolarizing_error(depol_p, 1),
+            ['h', 'x', 'y', 'z', 's', 't']
+        )
+
+    if decay_f > 0:
+        noise.add_all_qubit_quantum_error(
+            amplitude_damping_error(decay_f),
+            ['h', 'x', 'y', 'z', 's', 't']
+        )
+
+    if phase_g > 0:
+        noise.add_all_qubit_quantum_error(
+            phase_damping_error(phase_g),
+            ['h', 'x', 'y', 'z', 's', 't']
+        )
+
+    if tsp_01 > 0 or tsp_10 > 0:
+        noise.add_all_qubit_readout_error(
+            ReadoutError([
+                [1 - tsp_01, tsp_01],
+                [tsp_10, 1 - tsp_10]
+            ])
+        )
+
+    return noise
+
+
 # --- Streamlit UI ---
 st.title('⚛️ Quantum Circuit Simulator')
 st.markdown("Select a gate from the sidebar, then click on the grid to place it.")
@@ -82,6 +122,16 @@ with st.sidebar:
     num_qubits = st.slider('Number of Qubits', 1, 5, 2, key='num_qubits_slider')
     num_steps = st.slider('Circuit Depth', 5, 15, 10, key='num_steps_slider')
     num_shots = st.slider('Number of Shots (for measurement)', 100, 4000, 1024, key='shots_slider')
+    st.header("Quantum Noise")
+    enable_noise = st.checkbox("Enable Noise", value=False)
+
+    with st.expander("Noise Parameters"):
+        depol_p = st.slider("Depolarization", 0.0, 0.3, 0.0)
+        decay_f = st.slider("Amplitude Damping (T1)", 0.0, 0.3, 0.0)
+        phase_g = st.slider("Phase Damping (T2)", 0.0, 0.3, 0.0)
+        tsp_01 = st.slider("|0⟩ → |1⟩ (Readout)", 0.0, 0.3, 0.0)
+        tsp_10 = st.slider("|1⟩ → |0⟩ (Readout)", 0.0, 0.3, 0.0)
+
     
     if 'circuit_grid' not in st.session_state or len(st.session_state.circuit_grid) != num_qubits or len(st.session_state.circuit_grid[0]) != num_steps:
         initialize_state(num_qubits, num_steps)
@@ -163,7 +213,15 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
             qc_measured.measure_all()
             
             qasm_backend = Aer.get_backend('qasm_simulator')
-            qasm_job = qasm_backend.run(qc_measured, shots=num_shots)
+
+            noise_model = build_noise_model() if enable_noise else None
+
+            qasm_job = qasm_backend.run(
+            qc_measured,
+            shots=num_shots,
+            noise_model=noise_model
+            )
+
             counts = qasm_job.result().get_counts()
             
             if counts:
@@ -190,6 +248,13 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                 st.plotly_chart(hist_fig, use_container_width=True)
             else:
                 st.warning("No measurement outcomes were recorded.")
+
+            if enable_noise:
+                st.info(
+                "ℹ️ Bloch spheres show the ideal (noise-free) quantum state. "
+                "Noise affects measurement outcomes and purity indirectly."
+                )
+
 
             # --- Ideal State Simulation & Per-Qubit Results ---
             st.header("Ideal State Analysis (per Qubit)")
@@ -246,3 +311,4 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
