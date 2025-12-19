@@ -55,30 +55,108 @@ def place_gate(q, t):
         st.session_state.circuit_grid[q][t] = active
 
 def create_interactive_bloch_sphere(bloch_vector, title=""):
-    """Creates an interactive Bloch sphere plot using Plotly."""
     x, y, z = bloch_vector
+
     fig = go.Figure()
-    u, v = np.mgrid[0:2*np.pi:100j, 0:np.pi:100j]
-    sphere_x = np.cos(u) * np.sin(v)
-    sphere_y = np.sin(u) * np.sin(v)
-    sphere_z = np.cos(v)
-    fig.add_trace(go.Surface(x=sphere_x, y=sphere_y, z=sphere_z,
-                             colorscale=[[0, 'lightblue'], [1, 'lightblue']],
-                             opacity=0.3, showscale=False))
-    fig.add_trace(go.Scatter3d(x=[-1.2, 1.2], y=[0, 0], z=[0, 0], mode='lines', line=dict(color='grey')))
-    fig.add_trace(go.Scatter3d(x=[0, 0], y=[-1.2, 1.2], z=[0, 0], mode='lines', line=dict(color='grey')))
-    fig.add_trace(go.Scatter3d(x=[0, 0], y=[0, 0], z=[-1.2, 1.2], mode='lines', line=dict(color='grey')))
-    fig.add_trace(go.Cone(x=[x], y=[y], z=[z], u=[x], v=[y], w=[z],
-                          sizemode="absolute", sizeref=0.1, anchor="tip",
-                          showscale=False, colorscale=[[0, 'red'], [1, 'red']]))
+
+    # --- Sphere surface ---
+    u = np.linspace(0, 2*np.pi, 60)
+    v = np.linspace(0, np.pi, 60)
+    sphere_x = np.outer(np.cos(u), np.sin(v))
+    sphere_y = np.outer(np.sin(u), np.sin(v))
+    sphere_z = np.outer(np.ones_like(u), np.cos(v))
+
+    fig.add_trace(go.Surface(
+        x=sphere_x, y=sphere_y, z=sphere_z,
+        opacity=0.15,
+        colorscale='Greys',
+        showscale=False
+    ))
+
+    # --- Grid lines (meridians) ---
+    for angle in range(0, 360, 30):
+        a = np.deg2rad(angle)
+        fig.add_trace(go.Scatter3d(
+            x=np.cos(a)*np.sin(v),
+            y=np.sin(a)*np.sin(v),
+            z=np.cos(v),
+            mode='lines',
+            line=dict(color='lightgrey', width=1),
+            showlegend=False
+        ))
+
+    # --- Grid lines (parallels) ---
+    for angle in range(0, 180, 30):
+        a = np.deg2rad(angle)
+        fig.add_trace(go.Scatter3d(
+            x=np.cos(u)*np.sin(a),
+            y=np.sin(u)*np.sin(a),
+            z=np.cos(a)*np.ones_like(u),
+            mode='lines',
+            line=dict(color='lightgrey', width=1),
+            showlegend=False
+        ))
+
+    # --- Axes ---
+    axis_len = 1.2
+    axis_color = 'black'
+
+    fig.add_trace(go.Scatter3d(x=[-axis_len, axis_len], y=[0,0], z=[0,0],
+                               mode='lines', line=dict(color=axis_color, width=2)))
+    fig.add_trace(go.Scatter3d(x=[0,0], y=[-axis_len, axis_len], z=[0,0],
+                               mode='lines', line=dict(color=axis_color, width=2)))
+    fig.add_trace(go.Scatter3d(x=[0,0], y=[0,0], z=[-axis_len, axis_len],
+                               mode='lines', line=dict(color=axis_color, width=2)))
+
+    # --- Axis labels ---
+    fig.add_trace(go.Scatter3d(x=[1.3], y=[0], z=[0], mode='text', text=['X']))
+    fig.add_trace(go.Scatter3d(x=[0], y=[1.3], z=[0], mode='text', text=['Y']))
+    fig.add_trace(go.Scatter3d(x=[0], y=[0], z=[1.3], mode='text', text=['|0⟩']))
+    fig.add_trace(go.Scatter3d(x=[0], y=[0], z=[-1.3], mode='text', text=['|1⟩']))
+
+    # --- Bloch vector (thick line) ---
+    r = np.sqrt(x*x + y*y + z*z)
+    if r > 0.01:
+        fig.add_trace(go.Scatter3d(
+            x=[0, x], y=[0, y], z=[0, z],
+            mode='lines',
+            line=dict(color='#FF1493', width=8),
+            showlegend=False
+        ))
+
+        # --- Arrow head ---
+        fig.add_trace(go.Cone(
+            x=[x], y=[y], z=[z],
+            u=[x/r], v=[y/r], w=[z/r],
+            anchor="tip",
+            sizemode="absolute",
+            sizeref=0.2,
+            colorscale=[[0, '#FF1493'], [1, '#FF1493']],
+            showscale=False
+        ))
+
+        # --- Tip marker ---
+        fig.add_trace(go.Scatter3d(
+            x=[x], y=[y], z=[z],
+            mode='markers',
+            marker=dict(size=6, color='#FF1493'),
+            showlegend=False
+        ))
+
     fig.update_layout(
-        title=dict(text=title, x=0.5), showlegend=False,
-        scene=dict(xaxis=dict(showticklabels=False, showgrid=False, zeroline=False, backgroundcolor="rgba(0,0,0,0)"),
-                   yaxis=dict(showticklabels=False, showgrid=False, zeroline=False, backgroundcolor="rgba(0,0,0,0)"),
-                   zaxis=dict(showticklabels=False, showgrid=False, zeroline=False, backgroundcolor="rgba(0,0,0,0)"),
-                   aspectmode='cube'),
-        margin=dict(l=0, r=0, b=0, t=40))
+        title=dict(text=title, x=0.5),
+        scene=dict(
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False),
+            zaxis=dict(visible=False),
+            aspectmode='cube'
+        ),
+        margin=dict(l=0, r=0, b=0, t=40),
+        paper_bgcolor='rgba(0,0,0,0)'
+    )
+
     return fig
+
 
 def build_noise_model():
     noise = NoiseModel()
@@ -316,6 +394,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
