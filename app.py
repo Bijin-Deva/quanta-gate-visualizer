@@ -246,6 +246,11 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                     yaxis_title="Counts",
                 )
                 st.plotly_chart(hist_fig, use_container_width=True)
+                # --- Raw Counts Display ---
+                st.subheader("Raw Measurement Counts")
+                with st.expander("Show raw counts for each outcome"):
+                st.json(sorted_counts)
+
             else:
                 st.warning("No measurement outcomes were recorded.")
 
@@ -311,4 +316,5 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
