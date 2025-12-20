@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 from qiskit import QuantumCircuit
 from qiskit_aer import Aer
+from qiskit_aer import AerSimulator
 import plotly.graph_objects as go
 from qiskit.quantum_info import DensityMatrix, partial_trace
 import matplotlib.pyplot as plt
@@ -407,18 +408,25 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
             st.header("Ideal State Analysis (per Qubit)")
             st.markdown("This shows the theoretical quantum state of each qubit *before* measurement.")
             
-            from qiskit_aer import AerSimulator
-
-            sim = AerSimulator(
-            method="density_matrix",
-            noise_model=build_noise_model_v2(
-            depol_p, decay_f, phase_g, tsp_01, tsp_10
-            ) if enable_noise else None
+            # --- Density Matrix Simulation (noise-aware) ---
+            dm_simulator = AerSimulator(
+                method="density_matrix",
+                noise_model=(
+                    build_noise_model_v2(depol_p, decay_f, phase_g, tsp_01, tsp_10)
+                    if enable_noise else None
+                )
             )
+            
+            # IMPORTANT: copy circuit and SAVE density matrix
+            qc_dm = qc.copy()
+            qc_dm.save_density_matrix()
+            
+            dm_job = dm_simulator.run(qc_dm)
+            dm_result = dm_job.result()
+            
+            # THIS KEY EXISTS ONLY BECAUSE OF save_density_matrix()
+            final_dm = DensityMatrix(dm_result.data(0)["density_matrix"])
 
-            job = sim.run(qc)
-            result = job.result()
-            final_dm = result.data(0)["density_matrix"]
 
 
             # --- Display Per-Qubit Information ---
@@ -467,6 +475,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
