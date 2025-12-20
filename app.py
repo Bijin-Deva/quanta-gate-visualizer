@@ -272,11 +272,9 @@ with st.sidebar:
 
     st.header("🔬 Noise Model")
     enable_noise = st.checkbox("Enable Simulation Noise")
-
     depol_p = st.slider("Depolarization", 0.0, 0.3, 0.0)
     decay_f = st.slider("T1 Amplitude Damping", 0.0, 0.3, 0.0)
     phase_g = st.slider("T2 Phase Damping", 0.0, 0.3, 0.0)
-
     tsp_01 = st.slider("|0⟩ → |1⟩ Readout Error", 0.0, 0.3, 0.0)
     tsp_10 = st.slider("|1⟩ → |0⟩ Readout Error", 0.0, 0.3, 0.0)
 
@@ -452,6 +450,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
