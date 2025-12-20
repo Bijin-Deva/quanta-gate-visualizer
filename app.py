@@ -271,12 +271,16 @@ with st.sidebar:
         st.rerun()
 
     st.header("🔬 Noise Model")
+
     enable_noise = st.checkbox("Enable Simulation Noise")
-    depol_p = st.slider("Depolarization", 0.0, 0.3, 0.0)
-    decay_f = st.slider("T1 Amplitude Damping", 0.0, 0.3, 0.0)
-    phase_g = st.slider("T2 Phase Damping", 0.0, 0.3, 0.0)
-    tsp_01 = st.slider("|0⟩ → |1⟩ Readout Error", 0.0, 0.3, 0.0)
-    tsp_10 = st.slider("|1⟩ → |0⟩ Readout Error", 0.0, 0.3, 0.0)
+
+    with st.expander("Noise Parameters", expanded=True):
+        depol_p = st.slider("Depolarization", 0.0, 0.3, 0.0, step=0.01)
+        decay_f = st.slider("T1 Amplitude Damping", 0.0, 0.3, 0.0, step=0.01)
+        phase_g = st.slider("T2 Phase Damping", 0.0, 0.3, 0.0, step=0.01)
+        tsp_01 = st.slider("|0⟩ → |1⟩ Readout Error", 0.0, 0.3, 0.0, step=0.01)
+        tsp_10 = st.slider("|1⟩ → |0⟩ Readout Error", 0.0, 0.3, 0.0, step=0.01)
+
 
     
     st.header("🎨 Gate Palette")
@@ -450,6 +454,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
