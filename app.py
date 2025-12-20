@@ -271,6 +271,14 @@ with st.sidebar:
         initialize_state(num_qubits, num_steps)
         st.rerun()
 
+    
+    st.header("🎨 Gate Palette")
+    st.write(f"Active Tool: **{st.session_state.active_gate}**")
+    palette = ['H', 'X', 'Y', 'Z', 'S', 'T', 'I', 'CNOT']
+    cols = st.columns(2)
+    for i, g in enumerate(palette):
+        cols[i%2].button(g, key=f"pal_{g}", on_click=set_active_gate, args=(g,), use_container_width=True)
+
     st.header("🔬 Noise Model")
 
     enable_noise = st.checkbox("Enable Simulation Noise")
@@ -281,15 +289,6 @@ with st.sidebar:
         phase_g = st.slider("T2 Phase Damping", 0.0, 0.3, 0.0, step=0.01)
         tsp_01 = st.slider("|0⟩ → |1⟩ Readout Error", 0.0, 0.3, 0.0, step=0.01)
         tsp_10 = st.slider("|1⟩ → |0⟩ Readout Error", 0.0, 0.3, 0.0, step=0.01)
-
-
-    
-    st.header("🎨 Gate Palette")
-    st.write(f"Active Tool: **{st.session_state.active_gate}**")
-    palette = ['H', 'X', 'Y', 'Z', 'S', 'T', 'I', 'CNOT']
-    cols = st.columns(2)
-    for i, g in enumerate(palette):
-        cols[i%2].button(g, key=f"pal_{g}", on_click=set_active_gate, args=(g,), use_container_width=True)
 
 # --- Main Circuit Grid UI ---
 st.header('Quantum Circuit')
@@ -459,6 +458,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
