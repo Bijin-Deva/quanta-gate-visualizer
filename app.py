@@ -241,7 +241,7 @@ def initialize_state(num_qubits, num_steps):
         st.session_state.active_gate = 'H'
 
 # --- Streamlit UI ---
-st.title('⚛️ Quantum Circuit Simulator')
+st.title('🙋‍♂️ Quantum Circuit Simulator')
 st.markdown("Select a gate from the sidebar, then click on the grid to place it.")
 
 # --- Sidebar ---
@@ -450,6 +450,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
