@@ -407,10 +407,19 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
             st.header("Ideal State Analysis (per Qubit)")
             st.markdown("This shows the theoretical quantum state of each qubit *before* measurement.")
             
-            statevector_backend = Aer.get_backend('statevector_simulator')
-            job = statevector_backend.run(qc)
-            final_state = job.result().get_statevector()
-            final_dm = DensityMatrix(final_state)
+            from qiskit_aer import AerSimulator
+
+            sim = AerSimulator(
+            method="density_matrix",
+            noise_model=build_noise_model_v2(
+            depol_p, decay_f, phase_g, tsp_01, tsp_10
+            ) if enable_noise else None
+            )
+
+            job = sim.run(qc)
+            result = job.result()
+            final_dm = result.data(0)["density_matrix"]
+
 
             # --- Display Per-Qubit Information ---
             cols = st.columns(num_qubits)
@@ -458,6 +467,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
