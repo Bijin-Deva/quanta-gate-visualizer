@@ -188,7 +188,7 @@ def create_interactive_bloch_sphere(bloch_vector, title=""):
     return fig
 
 
-def build_noise_model():
+def build_noise_model(depol_p, decay_f, phase_g, tsp_01, tsp_10):
     noise = NoiseModel()
 
     if depol_p > 0:
@@ -218,6 +218,7 @@ def build_noise_model():
         )
 
     return noise
+
 
 def place_gate(q, t):
     # SAVE STATE BEFORE CHANGE
@@ -352,7 +353,11 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
             
             qasm_backend = Aer.get_backend('qasm_simulator')
 
-            noise_model = build_noise_model() if enable_noise else None
+            noise_model = (
+                build_noise_model(depol_p, decay_f, phase_g, tsp_01, tsp_10)
+                if enable_noise else None
+                )
+
 
             qasm_job = qasm_backend.run(
             qc_measured,
@@ -454,6 +459,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
