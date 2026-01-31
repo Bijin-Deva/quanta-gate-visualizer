@@ -350,19 +350,19 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
             #qc.draw('mpl', ax=ax, style='iqx')
             #st.pyplot(fig)
             #plt.close(fig)
-            fig, ax = plt.subplots(
-                figsize=(max(6, num_steps * 0.5), max(2, num_qubits * 0.7)),
-                dpi=150
+            st.subheader("Circuit Diagram")
+            
+            fig_circuit = qc.draw(
+                output='mpl',
+                style={
+                    'fontsize': 12,
+                    'subfontsize': 10,
+                    'linewidth': 1.2
+                },
+                fold=-1
             )
-            
-            qc.draw('mpl', ax=ax, style='iqx', scale=0.7, fold=-1)
-            fig.tight_layout(pad=0.2)
-            
-            st.pyplot(fig)
-            plt.close(fig)
+            st.pyplot(fig_circuit)
 
-
-            
             # --- Measurement Simulation & Histogram ---
             st.header("Measurement Outcomes")
             qc_measured = qc.copy()
@@ -492,6 +492,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
