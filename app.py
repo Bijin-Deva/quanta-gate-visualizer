@@ -353,7 +353,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
             st.subheader("Circuit Diagram")
 
             qc_vis = qc.copy()
-            qc_vis.barrier()
+            #qc_vis.barrier()
             qc_vis.measure_all()
             
             fig_circuit = qc_vis.draw(
@@ -498,6 +498,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
