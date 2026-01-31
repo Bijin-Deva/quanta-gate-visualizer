@@ -505,11 +505,10 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                     # ---- NEW: Qubit status & explanation ----
                     status = "PURE" if purity > 0.99 else "MIXED"
                     why_reasons = explain_why_qubit_state(
-                            i,
-                            st.session_state.circuit_grid,
-                            enable_noise
-                        )
-
+                        i,
+                        st.session_state.circuit_grid,
+                        enable_noise
+                    )
                 
                     badge_color = "🟢" if status == "PURE" else "🟠"
                     st.subheader(f"Qubit {i}  {badge_color} {status}")
@@ -542,6 +541,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
