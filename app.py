@@ -345,11 +345,16 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
             st.success("✅ Simulation complete!")
 
             # --- Circuit Visualization ---
-            st.header("Circuit Diagram")
-            fig, ax = plt.subplots()
-            qc.draw('mpl', ax=ax, style='iqx')
-            st.pyplot(fig)
+            #st.header("Circuit Diagram")
+            #fig, ax = plt.subplots()
+            #qc.draw('mpl', ax=ax, style='iqx')
+            #st.pyplot(fig)
+            #plt.close(fig)
+            fig, ax = plt.subplots(figsize=(max(8, num_steps*0.6), max(2, num_qubits*0.8)))
+            qc.draw('mpl', ax=ax, style='iqx', scale=0.8, fold=-1)
+            st.pyplot(fig, use_container_width=True)
             plt.close(fig)
+
             
             # --- Measurement Simulation & Histogram ---
             st.header("Measurement Outcomes")
@@ -480,6 +485,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
