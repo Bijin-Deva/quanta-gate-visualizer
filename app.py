@@ -241,36 +241,39 @@ def initialize_state(num_qubits, num_steps):
     st.session_state.redo_stack = []
     if 'active_gate' not in st.session_state:
         st.session_state.active_gate = 'H'
-def explain_qubit_state(purity, qubit_index, circuit_grid, noise_enabled):
-    explanations = []
+def explain_why_qubit_state(qubit_index, circuit_grid, noise_enabled):
+    reasons = []
 
-    # Status
-    if purity > 0.99:
-        status = "PURE"
-        explanations.append("This qubit is in a pure quantum state.")
-    else:
-        status = "MIXED"
-        explanations.append("Bloch vector length < 1 → mixed state.")
+    # Detect entangling operations
+    entangled = False
+    for t in range(len(circuit_grid[0])):
+        if circuit_grid[qubit_index][t] in ['●', '⊕']:
+            entangled = True
+            break
 
-        # Detect entangling gates (CNOT participation)
-        entangled = False
-        for t in range(len(circuit_grid[0])):
-            if circuit_grid[qubit_index][t] in ['●', '⊕']:
-                entangled = True
-                break
+    if entangled:
+        reasons.append(
+            "This qubit participated in a multi-qubit (entangling) operation."
+        )
+        reasons.append(
+            "Entanglement spreads quantum information across qubits."
+        )
+        reasons.append(
+            "After isolating this qubit, global correlations are lost."
+        )
 
-        if noise_enabled and entangled:
-            explanations.append("Caused by entanglement and noise.")
-        elif noise_enabled:
-            explanations.append("Caused by noise-induced decoherence.")
-        elif entangled:
-            explanations.append("Caused by entanglement with other qubits.")
-        else:
-            explanations.append("Mixedness due to loss of global information.")
+    if noise_enabled:
+        reasons.append(
+            "Noise introduces decoherence, reducing local quantum coherence."
+        )
 
-        explanations.append("Local state obtained via partial trace.")
+    if not entangled and not noise_enabled:
+        reasons.append(
+            "Only single-qubit gates were applied, preserving local purity."
+        )
 
-    return status, explanations
+    return reasons
+s
 
 # --- Streamlit UI ---
 st.title('Quantum Circuit Simulator')
@@ -500,12 +503,13 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
 
                 with cols[i]:
                     # ---- NEW: Qubit status & explanation ----
-                    status, explanations = explain_qubit_state(
-                        purity,
-                        i,
-                        st.session_state.circuit_grid,
-                        enable_noise
-                    )
+                    status = "PURE" if purity > 0.99 else "MIXED"
+                        why_reasons = explain_why_qubit_state(
+                            i,
+                            st.session_state.circuit_grid,
+                            enable_noise
+                        )
+
                 
                     badge_color = "🟢" if status == "PURE" else "🟠"
                     st.subheader(f"Qubit {i}  {badge_color} {status}")
@@ -538,6 +542,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
