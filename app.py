@@ -253,8 +253,13 @@ with st.sidebar:
     num_steps = st.slider('Circuit Depth', 5, 15, 10)
     num_shots = st.slider('Shots', 100, 4000, 1024)
 
-    if 'circuit_grid' not in st.session_state or len(st.session_state.circuit_grid) != num_qubits:
+    if (
+        'circuit_grid' not in st.session_state
+        or len(st.session_state.circuit_grid) != num_qubits
+        or len(st.session_state.circuit_grid[0]) != num_steps
+    ):
         initialize_state(num_qubits, num_steps)
+
 
     st.subheader("History Controls")
     c1, c2 = st.columns(2)
@@ -475,6 +480,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
