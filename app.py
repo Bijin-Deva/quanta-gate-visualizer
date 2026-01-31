@@ -249,7 +249,7 @@ st.markdown("Select a gate from the sidebar, then click on the grid to place it.
 # --- Sidebar ---
 with st.sidebar:
     st.header('⚙️ Circuit Settings')
-    num_qubits = st.slider('Number of Qubits', 1, 5, 2)
+    num_qubits = st.slider('Number of Qubits', 1, 10, 2)
     num_steps = st.slider('Circuit Depth', 5, 15, 10)
     num_shots = st.slider('Shots', 100, 4000, 1024)
 
@@ -475,6 +475,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
