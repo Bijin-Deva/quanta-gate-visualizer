@@ -241,6 +241,36 @@ def initialize_state(num_qubits, num_steps):
     st.session_state.redo_stack = []
     if 'active_gate' not in st.session_state:
         st.session_state.active_gate = 'H'
+def explain_qubit_state(purity, qubit_index, circuit_grid, noise_enabled):
+    explanations = []
+
+    # Status
+    if purity > 0.99:
+        status = "PURE"
+        explanations.append("This qubit is in a pure quantum state.")
+    else:
+        status = "MIXED"
+        explanations.append("Bloch vector length < 1 → mixed state.")
+
+        # Detect entangling gates (CNOT participation)
+        entangled = False
+        for t in range(len(circuit_grid[0])):
+            if circuit_grid[qubit_index][t] in ['●', '⊕']:
+                entangled = True
+                break
+
+        if noise_enabled and entangled:
+            explanations.append("Caused by entanglement and noise.")
+        elif noise_enabled:
+            explanations.append("Caused by noise-induced decoherence.")
+        elif entangled:
+            explanations.append("Caused by entanglement with other qubits.")
+        else:
+            explanations.append("Mixedness due to loss of global information.")
+
+        explanations.append("Local state obtained via partial trace.")
+
+    return status, explanations
 
 # --- Streamlit UI ---
 st.title('Quantum Circuit Simulator')
@@ -345,11 +375,6 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
             st.success("✅ Simulation complete!")
 
             # --- Circuit Visualization ---
-            #st.header("Circuit Diagram")
-            #fig, ax = plt.subplots()
-            #qc.draw('mpl', ax=ax, style='iqx')
-            #st.pyplot(fig)
-            #plt.close(fig)
             st.subheader("Circuit Diagram")
 
             qc_vis = qc.copy()
@@ -474,30 +499,46 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                 purity = np.real(np.trace(reduced_dm.data @ reduced_dm.data))
 
                 with cols[i]:
-                    st.subheader(f"Qubit {i}")
-
-                    # Display Bloch Sphere first
+                    # ---- NEW: Qubit status & explanation ----
+                    status, explanations = explain_qubit_state(
+                        purity,
+                        i,
+                        st.session_state.circuit_grid,
+                        enable_noise
+                    )
+                
+                    badge_color = "🟢" if status == "PURE" else "🟠"
+                    st.subheader(f"Qubit {i}  {badge_color} {status}")
+                
+                    # ---- Existing Bloch Sphere ----
                     fig = create_interactive_bloch_sphere(bloch_vector)
                     st.plotly_chart(fig, use_container_width=True, key=f"bloch_sphere_{i}")
-
-                    # Display analysis below the sphere
+                
+                    # ---- Existing probability display ----
                     st.text(f"|0⟩: {prob_0:.3f}")
                     st.progress(prob_0)
                     st.text(f"|1⟩: {prob_1:.3f}")
                     st.progress(prob_1)
-                    
+                
+                    # ---- Existing purity ----
                     st.metric(label="Purity", value=f"{purity:.3f}")
-
+                
+                    # ---- NEW: WHY THIS STATE panel ----
+                    with st.expander("Why this state?"):
+                        for line in explanations:
+                            st.write("•", line)
+                
+                    # ---- Existing details ----
                     with st.expander("Details"):
                         st.text(f"Bloch Vector: ({x:.3f}, {y:.3f}, {z:.3f})")
                         st.text("Reduced Density Matrix:")
-                        # Use st.dataframe to display the matrix cleanly
                         st.dataframe(reduced_dm.data)
 
     except ValueError as e:
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
