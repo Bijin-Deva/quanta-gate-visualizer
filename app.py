@@ -528,8 +528,9 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                 
                     # ---- NEW: WHY THIS STATE panel ----
                     with st.expander("Why this state?"):
-                        for line in explanations:
+                        for line in why_reasons:
                             st.write("•", line)
+
                 
                     # ---- Existing details ----
                     with st.expander("Details"):
@@ -541,6 +542,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
