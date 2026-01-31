@@ -241,39 +241,6 @@ def initialize_state(num_qubits, num_steps):
     st.session_state.redo_stack = []
     if 'active_gate' not in st.session_state:
         st.session_state.active_gate = 'H'
-def explain_why_qubit_state(qubit_index, circuit_grid, noise_enabled):
-    reasons = []
-
-    # Detect entangling operations
-    entangled = False
-    for t in range(len(circuit_grid[0])):
-        if circuit_grid[qubit_index][t] in ['●', '⊕']:
-            entangled = True
-            break
-
-    if entangled:
-        reasons.append(
-            "This qubit participated in a multi-qubit (entangling) operation."
-        )
-        reasons.append(
-            "Entanglement spreads quantum information across qubits."
-        )
-        reasons.append(
-            "After isolating this qubit, global correlations are lost."
-        )
-
-    if noise_enabled:
-        reasons.append(
-            "Noise introduces decoherence, reducing local quantum coherence."
-        )
-
-    if not entangled and not noise_enabled:
-        reasons.append(
-            "Only single-qubit gates were applied, preserving local purity."
-        )
-
-    return reasons
-
 
 # --- Streamlit UI ---
 st.title('Quantum Circuit Simulator')
@@ -378,6 +345,11 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
             st.success("✅ Simulation complete!")
 
             # --- Circuit Visualization ---
+            #st.header("Circuit Diagram")
+            #fig, ax = plt.subplots()
+            #qc.draw('mpl', ax=ax, style='iqx')
+            #st.pyplot(fig)
+            #plt.close(fig)
             st.subheader("Circuit Diagram")
 
             qc_vis = qc.copy()
@@ -502,52 +474,30 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                 purity = np.real(np.trace(reduced_dm.data @ reduced_dm.data))
 
                 with cols[i]:
-                    # ---- NEW: Qubit status & explanation ----
-                    status = "PURE" if purity > 0.99 else "MIXED"
-                    why_reasons = explain_why_qubit_state(
-                        i,
-                        st.session_state.circuit_grid,
-                        enable_noise
-                    )
-                
-                    badge_color = "🟢" if status == "PURE" else "🟠"
-                    st.subheader(f"Qubit {i}  {badge_color} {status}")
-                
-                    # ---- Existing Bloch Sphere ----
+                    st.subheader(f"Qubit {i}")
+
+                    # Display Bloch Sphere first
                     fig = create_interactive_bloch_sphere(bloch_vector)
                     st.plotly_chart(fig, use_container_width=True, key=f"bloch_sphere_{i}")
-                
-                    # ---- Existing probability display ----
+
+                    # Display analysis below the sphere
                     st.text(f"|0⟩: {prob_0:.3f}")
                     st.progress(prob_0)
                     st.text(f"|1⟩: {prob_1:.3f}")
                     st.progress(prob_1)
-                
-                    # ---- Existing purity ----
+                    
                     st.metric(label="Purity", value=f"{purity:.3f}")
-                
-                    # ---- NEW: WHY THIS STATE panel ----
-                    with st.expander("Why this state?"):
-                        for line in why_reasons:
-                            st.write("•", line)
 
-                
-                    # ---- Existing details ----
                     with st.expander("Details"):
                         st.text(f"Bloch Vector: ({x:.3f}, {y:.3f}, {z:.3f})")
                         st.text("Reduced Density Matrix:")
+                        # Use st.dataframe to display the matrix cleanly
                         st.dataframe(reduced_dm.data)
 
     except ValueError as e:
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
-
-
-
-
-
-
 
 
 
