@@ -273,7 +273,7 @@ def explain_why_qubit_state(qubit_index, circuit_grid, noise_enabled):
         )
 
     return reasons
-s
+
 
 # --- Streamlit UI ---
 st.title('Quantum Circuit Simulator')
@@ -541,6 +541,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
