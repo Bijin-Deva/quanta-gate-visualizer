@@ -565,7 +565,6 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
- Detect noise change for live re-simulation
 
 auto_rerun_noise = (
     st.session_state.simulation_done
@@ -580,6 +579,7 @@ if auto_rerun_noise:
     st.session_state.last_noise_params = current_noise_params
 
     st.info("🔄 Noise parameters changed — re-simulating circuit")
+
 
 
 
