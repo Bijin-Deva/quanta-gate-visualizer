@@ -20,6 +20,15 @@ st.set_page_config(layout="wide", page_title="Quantum Circuit Simulator")
 # --- Session State Initialization ---
 if "undo_stack" not in st.session_state:
     st.session_state.undo_stack = []
+# --- Simulation State (for live noise updates) ---
+if "last_circuit" not in st.session_state:
+    st.session_state.last_circuit = None
+
+if "simulation_done" not in st.session_state:
+    st.session_state.simulation_done = False
+
+if "last_noise_params" not in st.session_state:
+    st.session_state.last_noise_params = None
 
 # --- Gate Definitions ---
 GATE_DEFINITIONS = {
@@ -335,6 +344,16 @@ with st.sidebar:
         phase_g = st.slider("T2 Phase Damping", 0.0, 0.3, 0.0, step=0.01)
         tsp_01 = st.slider("|0⟩ → |1⟩ Readout Error", 0.0, 0.3, 0.0, step=0.01)
         tsp_10 = st.slider("|1⟩ → |0⟩ Readout Error", 0.0, 0.3, 0.0, step=0.01)
+    # --- Bundle noise parameters for change detection ---
+    current_noise_params = (
+        enable_noise,
+        depol_p,
+        decay_f,
+        phase_g,
+        tsp_01,
+        tsp_10
+    )
+    
 
 # --- Main Circuit Grid UI ---
 st.header('Quantum Circuit')
@@ -537,11 +556,31 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                         st.text("Reduced Density Matrix:")
                         # Use st.dataframe to display the matrix cleanly
                         st.dataframe(reduced_dm.data)
+                    # --- Save circuit & noise state for live updates ---
+                    st.session_state.last_circuit = qc.copy()
+                    st.session_state.simulation_done = True
+                    st.session_state.last_noise_params = current_noise_params   
 
     except ValueError as e:
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+ Detect noise change for live re-simulation
+
+auto_rerun_noise = (
+    st.session_state.simulation_done
+    and st.session_state.last_circuit is not None
+    and current_noise_params != st.session_state.last_noise_params
+)
+                
+# STEP 5: Auto re-run simulation using saved circuit
+
+if auto_rerun_noise:
+    qc = st.session_state.last_circuit.copy()
+    st.session_state.last_noise_params = current_noise_params
+
+    st.info("🔄 Noise parameters changed — re-simulating circuit")
+
 
 
 
