@@ -241,22 +241,15 @@ def initialize_state(num_qubits, num_steps):
     st.session_state.redo_stack = []
     if 'active_gate' not in st.session_state:
         st.session_state.active_gate = 'H'
-def format_quantum_state_equation(purity, x, y, z):
-    if purity > 0.99:
-        # Pure state: infer amplitudes from Bloch vector (up to global phase)
-        theta = np.arccos(z)
-        phi = np.arctan2(y, x)
+def format_quantum_state_equation(purity, x, y, z, tol=1e-6):
+    """
+    Returns a LaTeX string representing the reduced state of a single qubit.
+    - Pure states: |0>, |1>, or superposition
+    - Mixed states: Bloch density-matrix form
+    """
 
-        alpha = np.cos(theta / 2)
-        beta_mag = np.sin(theta / 2)
-
-        # Phase only shown symbolically (global phase ignored)
-        return (
-            r"|\psi\rangle = "
-            rf"{alpha:.3f}|0\rangle + e^{{i\phi}} {beta_mag:.3f}|1\rangle"
-        )
-    else:
-        # Mixed state: Bloch density matrix form
+    # ---- MIXED STATE ----
+    if purity < 0.99:
         return (
             r"\rho = \frac{1}{2}\left("
             r"I + "
@@ -265,6 +258,29 @@ def format_quantum_state_equation(purity, x, y, z):
             rf"{z:.3f}\sigma_z"
             r"\right)"
         )
+
+    # ---- PURE STATE ----
+    # Handle computational basis states cleanly
+    if abs(z - 1.0) < tol:
+        return r"|\psi\rangle = |0\rangle"
+
+    if abs(z + 1.0) < tol:
+        return r"|\psi\rangle = |1\rangle"
+
+    # ---- GENERAL PURE SUPERPOSITION ----
+    # Bloch → amplitudes (up to global phase)
+    theta = np.arccos(np.clip(z, -1.0, 1.0))
+    phi = np.arctan2(y, x)
+
+    alpha = np.cos(theta / 2)
+    beta = np.sin(theta / 2)
+
+    return (
+        r"|\psi\rangle = "
+        rf"{alpha:.3f}|0\rangle + "
+        rf"e^{{i\phi}}\,{beta:.3f}|1\rangle"
+    )
+
 
 # --- Streamlit UI ---
 st.title('Quantum Circuit Simulator')
@@ -497,9 +513,9 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                 # Calculate purity
                 purity = np.real(np.trace(reduced_dm.data @ reduced_dm.data))
                 state_eq = format_quantum_state_equation(purity, x, y, z)
-
                 st.markdown(f"**Reduced State Equation (Qubit q{i}):**")
                 st.latex(state_eq)
+
 
                 with cols[i]:
                     st.subheader(f"Qubit {i}")
@@ -526,6 +542,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
