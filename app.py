@@ -498,7 +498,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
                 purity = np.real(np.trace(reduced_dm.data @ reduced_dm.data))
                 state_eq = format_quantum_state_equation(purity, x, y, z)
 
-                st.markdown("**State Representation:**")
+                st.markdown(f"**Reduced State Equation (Qubit q{i}):**")
                 st.latex(state_eq)
 
                 with cols[i]:
@@ -526,6 +526,7 @@ if st.button('▶️ Execute', type="primary", use_container_width=True):
         st.error(f"Circuit Error: {e}")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
+
 
 
 
